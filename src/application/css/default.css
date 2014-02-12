@@ -1,0 +1,21 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+s|Application{
+	backgroundAlpha: 0;
+	paddingTop:15;
+	paddingRight:0;
+	paddingBottom:0;
+	paddingLeft:0;
+	fontSize:12;
+	fontFamily:微软雅黑;	
+}
+s|TextInput{
+	chromeColor:"#505050";
+	contentBackgroundColor:"#282626"
+}
+
+s|Button{
+	
+}

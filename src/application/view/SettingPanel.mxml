@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" backgroundColor="#444444" chromeColor="#505050"
+			   color="#FFFFFF" dropShadowVisible="false"  fontFamily="微软雅黑" width="750" height="600" initialize="init(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.utils.StringUtil;
+			import com.debug.Logger;
+			
+			import mx.events.FlexEvent;
+			
+			import spark.components.CheckBox;
+			
+			import application.model.vo.SettingInfo;
+			import application.view.events.CommonEvent;
+			
+			protected function init(event:FlexEvent):void
+			{
+				this.closeButton.visible = false;
+			}
+			
+			public function update(si:SettingInfo):void{
+				if(si){
+					projectPath.text = si.projectPath; 
+					releasePath.text = si.releasePath;
+					addBoxList(new File(si.projectPath));
+					
+					var len:int = vGroup.numElements;
+					for (var i:int = len -1; i >= 0; i--)
+					{
+						var box:CheckBox = vGroup.getElementAt(i) as CheckBox;
+						if(box){
+							if(si.folders.indexOf(box.name) >= 0){
+								box.selected = true;
+							}else{
+								box.selected = false;
+							}
+						}
+					}					
+					tfFilter.text	 = si.fileFilter.toString();
+					tfVersion.text	 = si.version.toString();
+				}
+			}
+			
+			public function addLog(content:String):void{
+				var label:Label = new Label();
+				label.text		= content;
+				logger.addElement(label);
+			}
+			
+			protected function onBrowseProject(event:MouseEvent):void
+			{
+				var file:File = new File();
+				file.browseForDirectory("选择项目目录");
+				file.addEventListener(Event.SELECT,onProjectSelected);
+			}
+			
+			protected function onBrowseRelease(event:MouseEvent):void
+			{
+				var file:File = new File();
+				file.browseForDirectory("选择发布目录");
+				file.addEventListener(Event.SELECT,onReleaseSelected);
+			}
+			
+			protected function onProjectSelected(event:Event):void
+			{
+				var file:File = event.target as File;
+				projectPath.text = (event.target as File).nativePath;
+				addBoxList(file);				
+			}
+			
+			private function addBoxList(file:File):void{
+				clearCheckBox();				
+				if(file.exists && file.isDirectory){
+					var temp:Array = file.getDirectoryListing();
+					for (var i:int = 0; i < temp.length; i++) 
+					{
+						var subFile:File = (temp[i] as File);
+						if(subFile.isDirectory && subFile.isHidden == false){
+							Logger.print(this,(temp[i] as File).name);
+							var checkBox:CheckBox 	= new CheckBox();
+							checkBox.selected		= true;
+							checkBox.label			= (temp[i] as File).name;
+							checkBox.width			= 150;
+							checkBox.toolTip		= (temp[i] as File).name;
+							checkBox.name			= (temp[i] as File).name;
+							vGroup.addElement(checkBox);
+						}
+					}					
+				}
+			}
+			
+			private function clearCheckBox():void{
+				var len:int = vGroup.numElements;
+				for (var i:int = len -1; i >= 0; i--)
+				{
+					var box:CheckBox = vGroup.getElementAt(i) as CheckBox;
+					if(box){
+						vGroup.removeElement(box);
+					}
+				}
+			}
+			
+			protected function onReleaseSelected(event:Event):void
+			{
+				releasePath.text = (event.target as File).nativePath;
+			}
+									
+			protected function selectAll_clickHandler(event:MouseEvent):void
+			{
+				setCheckBoxSelected(true);
+			}
+			
+			protected function selectNone_clickHandler(event:MouseEvent):void
+			{
+				setCheckBoxSelected(false);
+			}
+			
+			private function setCheckBoxSelected(value:Boolean = true):void
+			{
+				for (var i:int = 0, len:int = vGroup.numElements; i < len; i++)
+				{
+					var box:CheckBox = vGroup.getElementAt(i) as CheckBox;
+					if(box){
+						box.selected = value;
+					}
+				}
+			}
+			
+			protected function startBtn_clickHandler(event:MouseEvent):void
+			{
+				while(logger.numElements >0){
+					logger.removeElementAt(0);
+				}
+				
+				//收集项目目录
+				var error:String;
+				var si:SettingInfo 	= new SettingInfo();
+				si.projectPath		= projectPath.text;
+				if(!si.projectPath){
+					error = "请选择项目目录";
+					addLog("[Error] msg:" + error);
+//					Alert.show(error,"错误",Alert.OK);
+					return;
+				}
+				si.releasePath		= releasePath.text;
+				if(!si.releasePath){
+					error = "请选择发布目录";
+					addLog("[Error] msg:" + error);
+//					Alert.show(error,"错误",Alert.OK);
+					return;
+				}
+				si.version			= tfVersion.text;
+				if(!si.version){
+					error = "请输入版本号";
+					addLog("[Error] msg:" + error);
+//					Alert.show(error,"错误",Alert.OK);
+					return;
+				}
+				if(StringUtil.trim(tfFilter.text) != ""){
+					si.fileFilter		= tfFilter.text.split(",");
+				}else{
+					si.fileFilter		= [];
+				}
+				si.folders			= [];
+				for (var i:int = 0, len:int = vGroup.numElements; i < len; i++)
+				{
+					var box:CheckBox = vGroup.getElementAt(i) as CheckBox;
+					if(box && box.selected){
+						si.folders.push(box.name);
+					}
+				}
+				if( si.folders.length == 0 ){
+					error = "请从右边选择需要发布文件目录";
+					addLog("[Error] msg:" + error);
+//					Alert.show(error,"错误",Alert.OK);
+					return;
+				}
+				this.dispatchEvent(new CommonEvent(CommonEvent.START_RUN,si));
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		
+	</fx:Declarations>
+	<s:BorderContainer x="11" y="10" width="515" height="148" backgroundColor="#505050">
+		<s:Label x="10" y="18" color="#FFFFFF" fontFamily="微软雅黑" fontSize="14" text="项目目录："/>
+		<s:TextInput enabled="false" id="projectPath" x="83" y="10" width="320" chromeColor="#505050"
+					 contentBackgroundColor="#282626"/>
+		<s:Label x="10" y="82" color="#FFFFFF" fontFamily="微软雅黑" fontSize="14" text="发布格式："/>
+		<s:TextInput id="tfFilter" text=".json,.jpg,.png,.swf,.xml"  x="83" y="74" width="320" chromeColor="#505050"
+					 contentBackgroundColor="#282626"/>
+		<s:Label x="10" y="115" color="#FFFFFF" fontFamily="微软雅黑" fontSize="14" text="版本号："/>
+		<s:TextInput id="tfVersion" x="83" y="107" width="320" chromeColor="#505050"
+					 contentBackgroundColor="#282626"/>
+		<s:Button id="startBtn" click="startBtn_clickHandler(event)"  x="415" y="74" width="88" height="56" label="开始" cornerRadius="1"/>
+		<s:Button id="browseProject" click="onBrowseProject(event)" x="415" y="11" label="浏览"/>
+		<s:Label x="10" y="48" color="#FFFFFF" fontFamily="微软雅黑" fontSize="14" text="发布目录："/>
+		<s:TextInput enabled="false" id="releasePath" x="83" y="40" width="320" chromeColor="#505050"
+				 contentBackgroundColor="#282626"/>
+		<s:Button id="browseRelease" click="onBrowseRelease(event)" x="415" y="40" label="浏览"/>
+	</s:BorderContainer>
+	<s:BorderContainer x="534" y="10" width="200" height="547" backgroundColor="#505050">
+		<s:Scroller x="10" y="10">
+			<s:VGroup id="vGroup" x="10" y="8" width="170" height="507" clipAndEnableScrolling="true" >
+			</s:VGroup>			
+		</s:Scroller>
+		<s:Button id="selectAll" click="selectAll_clickHandler(event)" x="15" y="521" label="全选"/>
+		<s:Button id="selectNone" click="selectNone_clickHandler(event)" x="110" y="521" label="全不选"/>		
+	</s:BorderContainer>
+	<s:BorderContainer x="12" y="166" width="514" height="391" backgroundColor="#505050">
+		<s:Scroller x="10" y="9">
+			<s:VGroup id="logger" x="10" y="10" width="481" height="358" clipAndEnableScrolling="true">
+			</s:VGroup>
+		</s:Scroller>
+	</s:BorderContainer>
+</s:TitleWindow>
