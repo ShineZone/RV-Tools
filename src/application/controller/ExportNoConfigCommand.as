@@ -224,6 +224,7 @@ package application.controller
             var fileCount:int = fs.readShort();
             var ba:ByteArray = new ByteArray();
             fs.readBytes( ba );
+            ba.uncompress();
             var versionCodeCount:int;
             var keyCount:int;
             while ( 0 < fileCount-- )
@@ -255,6 +256,7 @@ package application.controller
                 ba.writeUTFBytes( fileInfo.versionCode );
                 ba.writeInt( fileInfo.fileSize );
             }
+            ba.compress();
             fs.writeShort( fileCount );
             fs.writeBytes( ba );
             fs.close();
