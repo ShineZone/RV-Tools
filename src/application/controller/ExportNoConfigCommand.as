@@ -27,31 +27,33 @@ package application.controller
     public class ExportNoConfigCommand extends BaseCommand
     {
         [Inject]
-        public var versionCodeModel : VersionCodeModel;
+        public var versionCodeModel:VersionCodeModel;
         [Inject]
-        public var event : ModuleEvent;
+        public var event:ModuleEvent;
         [Inject]
-        public var proxy : SettingProxy;
+        public var proxy:SettingProxy;
 
-        public var conf : File;
-        public var main : File;
-        private var configXml : XML;
+        //指向项目文件夹下的
+        public var conf:File;
+
+        public var main:File;
+        private var configXml:XML;
 
         public function ExportNoConfigCommand()
         {
             super();
         }
 
-        override public function execute() : void
+        override public function execute():void
         {
             super.execute();
-            var si : SettingInfo = event.data as SettingInfo;
+            var si:SettingInfo = event.data as SettingInfo;
             proxy.settingInfo = si;
 
             //复制所有需要的文件至发布目录
-            var projectFile : File = new File( si.projectPath );
-            var file : File;
-            for ( var i : int = 0, len : int = si.folders.length; i < len; i++ )
+            var projectFile:File = new File( si.projectPath );
+            var file:File;
+            for ( var i:int = 0, len:int = si.folders.length; i < len; i++ )
             {
                 file = new File( si.projectPath + File.separator + si.folders[i] );
                 if ( file.exists )
@@ -60,14 +62,13 @@ package application.controller
                 }
             }
             print( "=============== 复制所有文件结束... =======================" );
-            var index : int;
-            var newName : String;
-            var oldName : String;
-            var crc : String;
+            var index:int;
+            var newName:String;
+            var oldName:String;
+            var crc:String;
             //查找config.xml文件
             if ( conf && conf.exists )
             {
-                versionCodeModel.clear();
                 readConfigDataToModel( conf );
 
                 /*
@@ -113,14 +114,14 @@ package application.controller
                 conf = new File( proxy.projectFile ).resolvePath( "release/version.dat" );
 //                print( "==============没有找到config.xml文件================" );
             }
-            var fileName : String;
-            var newFilePath : String;
-            var newFile : File;
+            var fileName:String;
+            var newFilePath:String;
+            var newFile:File;
             var nativeFile:File;
-            for each ( var fileInfo : FileInfo in versionCodeModel.files )
+            for each ( var fileInfo:FileInfo in versionCodeModel.files )
             {
                 /*file = new File( proxy.releasePath + fileInfo.versionPath );
-                if ( !file.exists ) file = new File( proxy.releasePath + fileInfo.pathKey );*/
+                 if ( !file.exists ) file = new File( proxy.releasePath + fileInfo.pathKey );*/
 
                 nativeFile = new File( proxy.releasePath + fileInfo.pathKey );
 
@@ -137,14 +138,16 @@ package application.controller
                     newFilePath = nativeFile.parent.nativePath + File.separator + newName;
 //                    trace( "old: ", file.nativePath );
 //                    trace( "new: ", newFilePath );
-                    if (fileInfo.fileName == "GameConfig.xml")
+                    if ( fileInfo.fileName == "GameConfig.xml" )
                     {
-                        trace(nativeFile.name, fileInfo.versionCode, crc);
+                        trace( nativeFile.name, fileInfo.versionCode, crc );
                     }
                     newFile = new File( newFilePath );
                     if ( newFile.name != nativeFile.name )
                     {
                         nativeFile.moveToAsync( newFile, true );
+                        print( newName );
+                        print( newFilePath );
                         print( "重命名 " + oldName + " \n为 " + fileInfo.versionPath + " 成功" );
                     }
                     else
@@ -154,7 +157,11 @@ package application.controller
                 }
 
             }
+            trace(conf.nativePath);
             writeConfigData( conf );
+            newFile = new File( filterIngoreFolder( proxy.releasePath + conf.nativePath.substr( proxy.projectFile.length ) ) );
+            conf.copyTo( newFile, true );
+
 
             proxy.saveSetting();
             dispatch( new ModuleEvent( ModuleEvent.START_RUN_COMPLETE ) );
@@ -165,28 +172,28 @@ package application.controller
          * @param file
          *
          */
-        private function encryptMain( file : File ) : void
+        private function encryptMain( file:File ):void
         {
-            var byteArray : ByteArray = new ByteArray();
-            var readStream : FileStream = new FileStream();
+            var byteArray:ByteArray = new ByteArray();
+            var readStream:FileStream = new FileStream();
             readStream.open( file, FileMode.READ );
             readStream.readBytes( byteArray );
             readStream.close();
             byteArray.position = 0;
 
-            var writeStream : FileStream = new FileStream();
+            var writeStream:FileStream = new FileStream();
             writeStream.open( file, FileMode.WRITE );
             writeStream.writeBytes( Utils.encrypt( byteArray, 225, 115 ) );
             writeStream.close();
         }
 
-        private function modifyNameBeforeDot( file : File, str : String ) : File
+        private function modifyNameBeforeDot( file:File, str:String ):File
         {
-            var index : int;
-            var newName : String;
+            var index:int;
+            var newName:String;
             index = file.name.indexOf( "." );
             newName = file.name.substr( 0, index ) + str + file.name.substr( index );
-            var newFile : File = new File( file.parent.nativePath + File.separator + newName );
+            var newFile:File = new File( file.parent.nativePath + File.separator + newName );
             file.moveTo( newFile, true );
             return newFile;
         }
@@ -197,28 +204,28 @@ package application.controller
          * @return
          *
          */
-        private function getFileCrc( file : File ) : String
+        private function getFileCrc( file:File ):String
         {
-            var readStream : FileStream = new FileStream();
+            var readStream:FileStream = new FileStream();
             readStream.open( file, FileMode.READ );
-            var byteArray : ByteArray = new ByteArray;
+            var byteArray:ByteArray = new ByteArray;
             readStream.readBytes( byteArray );
             byteArray.position = 0;
-            var crc32 : CRC32 = new CRC32();
+            var crc32:CRC32 = new CRC32();
             crc32.update( byteArray, [] );
             readStream.close();
             return crc32.getValue().toString( 32 );
         }
 
-        private function readConfigDataToModel( file : File ) : void
+        private function readConfigDataToModel( file:File ):void
         {
-            var fs : FileStream = new FileStream();
+            var fs:FileStream = new FileStream();
             fs.open( file, FileMode.READ );
-            var fileCount : int = fs.readShort();
-            var ba : ByteArray = new ByteArray();
+            var fileCount:int = fs.readShort();
+            var ba:ByteArray = new ByteArray();
             fs.readBytes( ba );
-            var versionCodeCount : int;
-            var keyCount : int;
+            var versionCodeCount:int;
+            var keyCount:int;
             while ( 0 < fileCount-- )
             {
                 keyCount = ba.readShort();
@@ -228,14 +235,14 @@ package application.controller
             fs.close();
         }
 
-        private function writeConfigData( file : File ) : void
+        private function writeConfigData( file:File ):void
         {
-            var fs : FileStream = new FileStream();
+            var fs:FileStream = new FileStream();
             fs.open( file, FileMode.WRITE );
-            var ba : ByteArray = new ByteArray();
-            var fileCount : int = 0;
-            var tempBytes : ByteArray = new ByteArray();
-            for each ( var fileInfo : FileInfo in versionCodeModel.files )
+            var ba:ByteArray = new ByteArray();
+            var fileCount:int = 0;
+            var tempBytes:ByteArray = new ByteArray();
+            for each ( var fileInfo:FileInfo in versionCodeModel.files )
             {
                 fileCount++;
                 tempBytes.length = 0;
@@ -261,17 +268,17 @@ package application.controller
          * @param filters
          *
          */
-        private function copyFolder( file : File, curRoot : String, targetRoot : String, filters : Array ) : void
+        private function copyFolder( file:File, curRoot:String, targetRoot:String, filters:Array ):void
         {
             if ( file.isDirectory )
             {
-                var temp : Array = file.getDirectoryListing();
+                var temp:Array = file.getDirectoryListing();
                 //判断是否包含.xfl文件的文件夹，如果是则不复制
                 if ( !Utils.checkContainFile( file, [".xfl"] ) )
                 {
-                    for ( var i : int = 0, len : int = temp.length; i < len; i++ )
+                    for ( var i:int = 0, len:int = temp.length; i < len; i++ )
                     {
-                        var tempFile : File = temp[i];
+                        var tempFile:File = temp[i];
                         copyFolder( tempFile, curRoot, targetRoot, filters );
                     }
                 }
@@ -279,11 +286,11 @@ package application.controller
             else
             {
                 //文件类型过滤
-                var isCopy : Boolean = true;
+                var isCopy:Boolean = true;
                 if ( filters != null && filters.length != 0 )
                 {
-                    var index : int = file.name.lastIndexOf( "." );
-                    var suffix : String = file.name.substr( index );
+                    var index:int = file.name.lastIndexOf( "." );
+                    var suffix:String = file.name.substr( index );
                     if ( filters.indexOf( suffix ) < 0 )
                     {
                         isCopy = false;
@@ -292,38 +299,42 @@ package application.controller
                 if ( isCopy )
                 {
                     //如果遇到bin-debug或者bin-release,则不复制文件夹，直接复制文件
-                    var newFile : File = new File( filterIngoreFolder( targetRoot + file.nativePath.substr( curRoot.length ) ) );
+                    var newFile:File = new File( filterIngoreFolder( targetRoot + file.nativePath.substr( curRoot.length ) ) );
                     if ( file.name.toLowerCase() == "config.xml" )
                     {
                         conf = newFile;
                     }
                     else if ( file.name.toLowerCase() == "version.dat" )
                     {
-                        conf = newFile;
+                        conf = file;
+                        file.copyTo( newFile, true );
                     }
                     else if ( file.name.toLowerCase() == "wrapper.swf" || file.name.toLowerCase() == "main.swf" )
                     {
                         main = newFile;
                     }
-                    versionCodeModel.addFileInfo( newFile.nativePath.replace( proxy.releasePath, "" ) );
-                    file.copyToAsync( newFile, true );
-                    print( "复制 " + file.name + " 成功" );
+                    else
+                    {
+                        versionCodeModel.addFileInfo( newFile.nativePath.replace( proxy.releasePath, "" ) );
+                        file.copyTo( newFile, true );
+                        print( "复制 " + file.name + " 成功" );
+                    }
                 }
             }
         }
 
-        private var ignoreList : Array = ["bin-debug", "bin-release"];
+        private var ignoreList:Array = ["bin-debug", "bin-release"];
 
-        private function filterIngoreFolder( url : String ) : String
+        private function filterIngoreFolder( url:String ):String
         {
-            for ( var i : int = 0, len : int = ignoreList.length; i < len; i++ )
+            for ( var i:int = 0, len:int = ignoreList.length; i < len; i++ )
             {
                 url = StringUtil.remove( url, ignoreList[i] + File.separator );
             }
             return url;
         }
 
-        private function print( info : String ) : void
+        private function print( info:String ):void
         {
             this.dispatch( new ModuleEvent( ModuleEvent.ADD_LOG, info ) );
         }
